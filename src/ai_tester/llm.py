@@ -6,7 +6,7 @@ import requests
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 RETRY_CODES = {429, 500, 502, 503, 504}
-DEFAULT_FALLBACKS = "gemini-2.5-flash,gemini-3.5-flash"
+DEFAULT_FALLBACKS = "gemini-2.5-flash"
 
 
 class GeminiClient:

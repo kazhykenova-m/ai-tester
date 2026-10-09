@@ -1,0 +1,11 @@
+services:
+  tester:
+    build: .
+    init: true
+    restart: unless-stopped
+    env_file: .env
+    shm_size: 1gb
+    volumes:
+      - bot-data:/app/bot-data
+volumes:
+  bot-data:
