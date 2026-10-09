@@ -1,29 +1,17 @@
-name: AI run
-run-name: AI run ${{ inputs.request_id }}
+name: Site audit
 on:
   workflow_dispatch:
     inputs:
       url:
-        description: Адрес сайта
+        description: Публичный URL
         required: true
-        default: https://www.saucedemo.com
       scenario:
-        description: Файл сценария из папки scenarios
-        required: false
-        default: scenarios/site_audit.md
-      scenario_text:
-        description: Текст сценария (если заполнен, используется вместо файла)
-        required: false
-        default: ''
+        description: Настроенный JSON в репозитории
+        default: scenarios/projects/landing.json
       mobile:
-        description: Проверять мобильную версию
+        description: Мобильный экран
         type: boolean
-        required: false
         default: false
-      request_id:
-        description: Служебный номер запроса
-        required: false
-        default: manual
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -32,29 +20,20 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: pip
+          python-version: '3.9'
       - run: pip install -r requirements.txt
       - run: playwright install --with-deps chromium
-      - name: Run AI tester
+      - name: Run deterministic audit
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          MOBILE: ${{ inputs.mobile }}
           SITE_URL: ${{ inputs.url }}
           SCENARIO_FILE: ${{ inputs.scenario }}
-          SCENARIO_TEXT: ${{ inputs.scenario_text }}
+          MOBILE: ${{ inputs.mobile }}
         run: |
-          if [ -n "$SCENARIO_TEXT" ]; then
-            printf '%s' "$SCENARIO_TEXT" > custom_scenario.md
-            SCENARIO_FILE=custom_scenario.md
-          fi
           extra_args=()
-          if [ "$MOBILE" = "true" ]; then
-            extra_args+=(--mobile)
-          fi
-          PYTHONPATH=src python scripts/run_agent.py "$SCENARIO_FILE" --url "$SITE_URL" --headless --vision --max-steps 60 "${extra_args[@]}"
+          if [ "$MOBILE" = "true" ]; then extra_args+=(--mobile); fi
+          PYTHONPATH=src python scripts/run_agent.py "$SCENARIO_FILE" --url "$SITE_URL" --headless "${extra_args[@]}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ai-report
+          name: developer-report
           path: artifacts/
