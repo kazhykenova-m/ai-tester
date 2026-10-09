@@ -1,0 +1,50 @@
+name: AI run
+run-name: AI run ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Адрес сайта
+        required: true
+        default: https://www.saucedemo.com
+      scenario:
+        description: Файл сценария из папки scenarios
+        required: false
+        default: scenarios/saucedemo_cart.md
+      scenario_text:
+        description: Текст сценария (если заполнен, используется вместо файла)
+        required: false
+        default: ''
+      request_id:
+        description: Служебный номер запроса
+        required: false
+        default: manual
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: playwright install --with-deps chromium
+      - name: Run AI tester
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SITE_URL: ${{ inputs.url }}
+          SCENARIO_FILE: ${{ inputs.scenario }}
+          SCENARIO_TEXT: ${{ inputs.scenario_text }}
+        run: |
+          if [ -n "$SCENARIO_TEXT" ]; then
+            printf '%s' "$SCENARIO_TEXT" > custom_scenario.md
+            SCENARIO_FILE=custom_scenario.md
+          fi
+          PYTHONPATH=src python scripts/run_agent.py "$SCENARIO_FILE" --url "$SITE_URL" --headless
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-report
+          path: artifacts/
