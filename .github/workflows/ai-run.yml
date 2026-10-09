@@ -10,11 +10,16 @@ on:
       scenario:
         description: Файл сценария из папки scenarios
         required: false
-        default: scenarios/saucedemo_cart.md
+        default: scenarios/site_audit.md
       scenario_text:
         description: Текст сценария (если заполнен, используется вместо файла)
         required: false
         default: ''
+      mobile:
+        description: Проверять мобильную версию
+        type: boolean
+        required: false
+        default: false
       request_id:
         description: Служебный номер запроса
         required: false
@@ -34,6 +39,7 @@ jobs:
       - name: Run AI tester
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MOBILE: ${{ inputs.mobile }}
           SITE_URL: ${{ inputs.url }}
           SCENARIO_FILE: ${{ inputs.scenario }}
           SCENARIO_TEXT: ${{ inputs.scenario_text }}
@@ -42,7 +48,11 @@ jobs:
             printf '%s' "$SCENARIO_TEXT" > custom_scenario.md
             SCENARIO_FILE=custom_scenario.md
           fi
-          PYTHONPATH=src python scripts/run_agent.py "$SCENARIO_FILE" --url "$SITE_URL" --headless
+          extra_args=()
+          if [ "$MOBILE" = "true" ]; then
+            extra_args+=(--mobile)
+          fi
+          PYTHONPATH=src python scripts/run_agent.py "$SCENARIO_FILE" --url "$SITE_URL" --headless --vision --max-steps 60 "${extra_args[@]}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

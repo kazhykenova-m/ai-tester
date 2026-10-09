@@ -17,6 +17,7 @@ def main():
     parser.add_argument("--vision", action="store_true", help="отправлять скриншоты модели")
     parser.add_argument("--max-steps", type=int, default=30)
     parser.add_argument("--out", default="artifacts")
+    parser.add_argument("--mobile", action="store_true", help="мобильный viewport 390×844")
     args = parser.parse_args()
 
     load_dotenv(".env")
@@ -24,10 +25,14 @@ def main():
     llm = GeminiClient()
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=args.headless, slow_mo=300)
-        context = browser.new_context(viewport={"width": 1366, "height": 850})
+        context = browser.new_context(
+            viewport={"width": 390, "height": 844} if args.mobile else {"width": 1366, "height": 850},
+            is_mobile=args.mobile, has_touch=args.mobile,
+        )
         summary = run_scenario(
             context, scenario, llm, args.url,
             max_steps=args.max_steps, out_dir=args.out, vision=args.vision,
+            device="mobile" if args.mobile else "desktop",
         )
         browser.close()
     verdict = "PASSED" if summary["success"] else "FAILED"
