@@ -44,7 +44,7 @@ class GeminiClient:
             API_URL.format(model=model),
             headers={"x-goog-api-key": self.api_key},
             json=body,
-            timeout=(10, 50),
+            timeout=(10, 120),
         )
 
     def generate(self, prompt, image=None, retries=2):

@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     env_file: .env
     shm_size: 1gb
+    environment:
+      BOT_DATA_DIR: /app/bot-data
     volumes:
       - bot-data:/app/bot-data
 volumes:

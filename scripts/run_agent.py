@@ -1,44 +1,41 @@
+"""Run a configured JSON scenario without AI."""
+
 import argparse
+import json
+from pathlib import Path
+from ai_tester.structured import load_project
+from run_job import main as run_job
 import sys
-
-from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright
-
-from ai_tester.agent import run_scenario
-from ai_tester.llm import GeminiClient
-from ai_tester.scenario import load_scenario
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("scenario")
     parser.add_argument("--url", required=True)
-    parser.add_argument("--headless", action="store_true")
-    parser.add_argument("--vision", action="store_true", help="отправлять скриншоты модели")
-    parser.add_argument("--max-steps", type=int, default=30)
     parser.add_argument("--out", default="artifacts")
-    parser.add_argument("--mobile", action="store_true", help="мобильный viewport 390×844")
+    parser.add_argument("--mobile", action="store_true")
+    parser.add_argument(
+        "--headless", action="store_true", help="совместимость: запуск всегда headless"
+    )
     args = parser.parse_args()
-
-    load_dotenv(".env")
-    scenario = load_scenario(args.scenario)
-    llm = GeminiClient()
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=args.headless, slow_mo=300)
-        context = browser.new_context(
-            viewport={"width": 390, "height": 844} if args.mobile else {"width": 1366, "height": 850},
-            is_mobile=args.mobile, has_touch=args.mobile,
+    root = Path(args.out)
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "job.json").write_text(
+        json.dumps(
+            {
+                "url": args.url,
+                "scenario": load_project(args.scenario),
+                "devices": ["mobile" if args.mobile else "desktop"],
+            }
         )
-        summary = run_scenario(
-            context, scenario, llm, args.url,
-            max_steps=args.max_steps, out_dir=args.out, vision=args.vision,
-            device="mobile" if args.mobile else "desktop",
-        )
-        browser.close()
-    verdict = "PASSED" if summary["success"] else "FAILED"
-    print(f"{verdict}: {summary['reason']}")
-    print(f"Отчёт: {args.out}/report.html")
-    sys.exit(0 if summary["success"] else 1)
+    )
+    sys.argv = [sys.argv[0], str(root)]
+    run_job()
+    results = json.loads((root / "result.json").read_text())
+    print(results[0]["reason"])
+    print("Отчёт: " + str(root / results[0]["device"] / "report.html"))
+    return 0 if results[0]["success"] else 1
 
 
-main()
+if __name__ == "__main__":
+    sys.exit(main())
